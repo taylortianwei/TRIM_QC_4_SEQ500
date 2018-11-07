@@ -7,7 +7,8 @@ my $record="/share/fileshare/BGI_LAB/TRACKING_DOCUMENT/8SampleSheet/CSV";
 my $bakup="/share/fileshare/report/CSV_Backup";
 my $output="/share/fileshare/report/Result";
 my $temp="/share/fileshare/report/TempDir";
-my $datadir="/share/Zebra";
+my $CalcuDir="/share/Data01/tianwei/FASTQC";
+my $datadir="/share";
 my $rpath="/share/app/R-3.2.1/bin/Rscript";
 
 my %check;
@@ -19,7 +20,7 @@ while(1){
 	#check Record file
 	foreach my $file(<$output/*>){
 		$file=~s/$output\/*//;
-		next unless $file=~/(Zebra\d+_CL\d+)/;
+		next unless $file=~/(Zebra\d+_CL\d+)/ or $file=~/(Panda\d+_V\d+)/;
 		$check{$1}=1;
 	}
 
@@ -41,12 +42,13 @@ while(1){
 			$a[5]=~/$flowcell\_(L\d+)\_(.*)/;
 			my ($lane,$smpID)=($1,$2);
 			my ($project,$realID,$species)=@a[1..3]; $project=~s/\_.*//; $project=~s/\-.*//;
-			$fqfiles{$project}{"$datadir/$zebra/$flowcell/$lane/$a[5]\t$species\t$realID"}=1;
+			my $mc_type=$zebra; $mc_type=~s/\d+$//;
+			$fqfiles{$project}{"$datadir/$mc_type"."Data01"."/$zebra/$flowcell/$lane/$a[5]\t$species\t$realID\t$project"}=1;
 
-	                opendir DD,"$datadir/$zebra/$flowcell/$lane/";
+	                opendir DD,"$datadir/$mc_type"."Data01"."/$zebra/$flowcell/$lane/";
 	                foreach my $ff(readdir DD){
 	                        if ($ff=~/.*?\_(R\d+)\_.*?\.summaryReport\.html/){
-	                                $summary{$project}{"$1\_$flowcell\_$lane"}="$datadir/$zebra/$flowcell/$lane/$ff";
+	                                $summary{$project}{"$1\_$flowcell\_$lane"}="$datadir/$mc_type"."Data01"."/$zebra/$flowcell/$lane/$ff";
 	                        }else{
 	                                next;
 	                        }
@@ -83,14 +85,12 @@ while(1){
 			print O_SH "#sh $tmpout/2_FASTQC/qsub.sh\n";
 
 			print O_SH "\n#Step4. QualityControl\nmkdir -p $tmpout/3_QualityFilter\n";
-                        print O_SH "perl /share/Data01/tianwei/Bin/TRIM_QC_4_SEQ500/QC.pl $tmpout/fqfiles.txt $project $output $project/$zebra\_$flowcell/3_QualityFilter\n";
+                        print O_SH "perl /share/Data01/tianwei/Bin/TRIM_QC_4_SEQ500/QC.pl $tmpout/fqfiles.txt $project $output $project/$zebra\_$flowcell/3_QualityFilter 0 \n";
                         print O_SH "#sh $tmpout/3_QualityFilter/qsub.sh\n";
 
-			print O_SH "\n#Step5. Mapping and calculation\nperl /share/Data01/tianwei/Bin/TRIM_QC_4_SEQ500/get_alignment.pl $tmpout/fqfiles.txt $output $project/$zebra\_$flowcell/4_Alignment\n";
-			print O_SH "#sh /share/Data01/tianwei/FASTQC/TEMP/$project/$zebra\_$flowcell/4_Alignment/qsub_step1.sh\n";
-			print O_SH "#sh /share/Data01/tianwei/FASTQC/TEMP/$project/$zebra\_$flowcell/4_Alignment/qsub_step2.sh\n";
+			print O_SH "\n#Step5. Mapping and calculation\nperl /share/Data01/tianwei/Bin/TRIM_QC_4_SEQ500/get_alignment.pl $tmpout/fqfiles.txt $output $CalcuDir/$zebra\_$flowcell/4_Alignment\n";
+			print O_SH "#sh $CalcuDir/$zebra\_$flowcell/4_Alignment/qsub_mapping.sh\n";
 
-			#print O_SH "sh ";
 			close O_SH;
 		}
 	}

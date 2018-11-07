@@ -18,9 +18,7 @@ my $Len=&get_ref($RefLength);
 (open FQ,$fqfile) || die $!;
 
 my %rlID_bcID;
-mkpath("$CalcuDir");
-
-open QSUB,">$CalcuDir/qsub_mapping.sh";
+open QSUB,">$CaucuDir/qsub_mapping.sh";
 while(<FQ>){
 	chomp;
 	my @cc=split;
@@ -29,14 +27,12 @@ while(<FQ>){
 
 	$cc[0]=~/(CL\d+)\_(L\d+)\_(.*)/ or $cc[0]=~/(V\d+)\_(L\d+)\_(.*)/;
 	my ($flowcell,$lane,$smp)=($1,$2,$3);
-	my $temp="$CalcuDir/$lane\_$smp";
+	my $temp=join("_","$CalcuDir/$cc[3]/$cc[2]/$flowcell",$lane,$smp);
 	my $out=join("_","$OutDir/$cc[3]/$cc[2]/$flowcell",$lane,$smp);
 	mkpath("$temp");
 	mkpath("$out");
 	(open S,">$temp/map.sh") || die $!;
 	my ($fq1,$fq2)=($cc[0]."_1.fq.gz",$cc[0]."_2.fq.gz");
-	my ($ffq1,$ffq2)=($fq1,$fq2);
-	$ffq1=~s/.*\///;$ffq2=~s/.*\///;
         (open Rsc,">$temp/cov.chr.R") || die $!;
                 print Rsc &generate_R("$temp",$smp);
         close Rsc;
@@ -47,59 +43,54 @@ while(<FQ>){
 #\$ -N m_$lane\_$smp
 #\$ -cwd
 #\$ -pe mpi 4
-#\$ -l virtual_free=100M
 #\$ -o $temp/map.o
 #\$ -e $temp/map.e
 
 set -e
-#triming
-/share/Data01/tianwei/Bin/DNA_CSAP_v5.2.7/bin/SOAPnuke filter -1 $fq1 -2 $fq2 -t 0,0,0,0 -Q 2 -o $temp/$flowcell\_$lane\_$smp
 #mapping
-/share/Data01/tianwei/projects/bin/bwa-0.7.12/bwa aln -o 1 -e 50 -m 100000 -t 4 -i 15 -q 10 -f $temp/1.sai $Ref->{$species} $temp/$flowcell\_$lane\_$smp/Clean_$ffq1
-/share/Data01/tianwei/projects/bin/bwa-0.7.12/bwa aln -o 1 -e 50 -m 100000 -t 4 -i 15 -q 10 -f $temp/2.sai $Ref->{$species} $temp/$flowcell\_$lane\_$smp/Clean_$ffq2
+/share/Data01/tianwei/projects/bin/bwa-0.7.12/bwa aln -o 1 -e 50 -m 100000 -t 4 -i 15 -q 10 -f $temp/1.sai $Ref->{$species} $fq1
+/share/Data01/tianwei/projects/bin/bwa-0.7.12/bwa aln -o 1 -e 50 -m 100000 -t 4 -i 15 -q 10 -f $temp/2.sai $Ref->{$species} $fq2
 
-/share/Data01/tianwei/projects/bin/bwa-0.7.12/bwa sampe -a 697 -r \"\@RG\\tID:$flowcell\\tPL:BGI\\tPU:131129_I191_FCH7CU0ADXX_$lane\_$flowcell\\tLB:$flowcell\\tSM:V5YH_1\\tCN:BGI\" $Ref->{$species} $temp/1.sai $temp/2.sai $temp/$flowcell\_$lane\_$smp/Clean_$ffq1 $temp/$flowcell\_$lane\_$smp/Clean_$ffq2 | /share/app/samtools-1.2/bin/samtools view -b -S -T $Ref->{$species} - > $temp/$smp.bam
+/share/Data01/tianwei/projects/bin/bwa-0.7.12/bwa sampe -a 697 -r \"\@RG\\tID:$flowcell\\tPL:BGI\\tPU:131129_I191_FCH7CU0ADXX_$lane\_$flowcell\\tLB:$flowcell\\tSM:V5YH_1\\tCN:BGI\" $Ref->{$species} $temp/1.sai $temp/2.sai $fq1 $fq2 | /share/app/samtools-1.2/bin/samtools view -b -S -T $Ref->{$species} - > $temp/$smp.bam
 rm $temp/1.sai $temp/2.sai
 
-#/share/app/samtools-1.2/bin/samtools view -h $temp/$smp.bam | awk \'\{if \(\!\/\^\@\/ \&\& and\(\$2,4\) \=\= 4\) \{\$5=0\; \$6=\"\*\"\;\} gsub\(\/ \/\,\"\\t\"\,\$0\)\; print\}\' \| /share/app/samtools-1.2/bin/samtools view -b -S -T  $Ref->{$species} - > $temp/$smp.bf.bam
-#/share/Data01/lynn/projects/bin/java/jdk1.8.0_144/bin/java  -Xmx2G -Djava.io.tmpdir=/share/Data01/tianwei/tmp/java_tmp/ -XX:MaxPermSize=512m -XX:-UseGCOverheadLimit -jar /share/Data01/tianwei/Bin/picard/FixMateInformation.jar I=$temp/$smp.bf.bam O=$temp/$smp.bftmp.bam SO=coordinate VALIDATION_STRINGENCY=SILENT
+/share/app/samtools-1.2/bin/samtools view -h $temp/$smp.bam | awk \'\{if \(\!\/\^\@\/ \&\& and\(\$2,4\) \=\= 4\) \{\$5=0\; \$6=\"\*\"\;\} gsub\(\/ \/\,\"\\t\"\,\$0\)\; print\}\' \| /share/app/samtools-1.2/bin/samtools view -b -S -T  $Ref->{$species} - > $temp/$smp.bf.bam
+/share/Data01/lynn/projects/bin/java/jdk1.8.0_144/bin/java  -Xmx2G -Djava.io.tmpdir=/share/Data01/tianwei/tmp/java_tmp/ -XX:MaxPermSize=512m -XX:-UseGCOverheadLimit -jar /share/Data01/tianwei/Bin/picard/FixMateInformation.jar I=$temp/$smp.bf.bam O=$temp/$smp.bftmp.bam SO=coordinate VALIDATION_STRINGENCY=SILENT
 
 
 #sort
-#/share/app/samtools-1.2/bin/samtools calmd -b $temp/$smp.bftmp.bam $Ref->{$species} > $temp/$smp.sort.bam
-#/share/app/samtools-1.2/bin/samtools index $temp/$smp.sort.bam
+/share/app/samtools-1.2/bin/samtools calmd -b $temp/$smp.bftmp.bam $Ref->{$species} > $temp/$smp.sort.bam
 
 #duplication
-#/share/Data01/lynn/projects/bin/java/jdk1.8.0_144/bin/java  -Xmx2G -Djava.io.tmpdir=/share/Data01/tianwei/tmp/java_tmp/ -XX:MaxPermSize=512m -XX:-UseGCOverheadLimit -jar /share/Data01/tianwei/Bin/picard/MarkDuplicates.jar MAX_FILE_HANDLES=1000 REMOVE_DUPLICATES=false \\
-#I=$temp/$smp.sort.bam O=$temp/$smp.sort.rmdup.bam \\
-#METRICS_FILE=$temp/$flowcell\_$lane\_$smp.dup.xls VALIDATION_STRINGENCY=SILENT
-#/share/app/samtools-1.2/bin/samtools index $temp/$smp.sort.rmdup.bam
-#rm $temp/$smp.bam $temp/$smp.bf.bam $temp/$smp.bftmp.bam $temp/$smp.sort.bam
+/share/Data01/lynn/projects/bin/java/jdk1.8.0_144/bin/java  -Xmx2G -Djava.io.tmpdir=/share/Data01/tianwei/tmp/java_tmp/ -XX:MaxPermSize=512m -XX:-UseGCOverheadLimit -jar /share/Data01/tianwei/Bin/picard/MarkDuplicates.jar MAX_FILE_HANDLES=1000 REMOVE_DUPLICATES=false \\
+I=$temp/$smp.sort.bam O=$temp/$smp.sort.rmdup.bam \\
+METRICS_FILE=$temp/$flowcell\_$lane\_$smp.dup.xls VALIDATION_STRINGENCY=SILENT
+/share/app/samtools-1.2/bin/samtools index $temp/$smp.sort.rmdup.bam
+rm $temp/$smp.bam $temp/$smp.bf.bam $temp/$smp.bftmp.bam $temp/$smp.sort.bam
 
 #plot
-#/share/Data01/lynn/projects/bin/java/jdk1.8.0_144/bin/java  -Xmx2G -Djava.io.tmpdir=/share/Data01/tianwei/tmp/java_tmp/ -XX:MaxPermSize=512m -XX:-UseGCOverheadLimit -jar /share/Data01/tianwei/Bin/TRIM_QC_4_SEQ500/qcmg/qprofiler-1.0.jar --log $temp/$smp.cov.chr.log --loglevel INFO --input $temp/$smp.sort.rmdup.bam --output $temp/$smp.cov.chr.xml
+/share/Data01/lynn/projects/bin/java/jdk1.8.0_144/bin/java  -Xmx2G -Djava.io.tmpdir=/share/Data01/tianwei/tmp/java_tmp/ -XX:MaxPermSize=512m -XX:-UseGCOverheadLimit -jar /share/Data01/tianwei/Bin/TRIM_QC_4_SEQ500/qcmg/qprofiler-1.0.jar --log $temp/$smp.cov.chr.log --loglevel INFO --input $temp/$smp.sort.rmdup.bam --output $temp/$smp.cov.chr.xml
 #perl /share/Data01/tianwei/Bin/TRIM_QC_4_SEQ500/parse_chr_data.pl -i $temp/$smp.cov.chr.xml > $temp/$smp.cov.chr.tsv
-#/share/Data01/tianwei/Bin/R-3.3.2/bin/Rscript $temp/cov.chr.R
+/share/Data01/tianwei/Bin/R-3.3.2/bin/Rscript $temp/cov.chr.R
 
 #mapping stat
-#perl /share/Data01/tianwei/Bin/RNA_module/AlignmentStat/AlignmentStat_forBwa/bin/BwaMapStat.pl -bam $temp/$smp.sort.rmdup.bam -key $temp/$smp.map -samtools /share/app/samtools-1.2/bin/samtools
+perl /share/Data01/tianwei/Bin/RNA_module/AlignmentStat/AlignmentStat_forBwa/bin/BwaMapStat.pl -bam $temp/$smp.sort.rmdup.bam -key $temp/$smp.map -samtools /share/app/samtools-1.2/bin/samtools
 
 #insert length calculation
-#PATH=\$PATH:/share/app/R-3.2.1/bin/
-#export PATH
-#/share/Data01/lynn/projects/bin/java/jdk1.8.0_144/bin/java  -Xmx2G -Djava.io.tmpdir=/share/Data01/tianwei/tmp/java_tmp/ -XX:MaxPermSize=512m -XX:-UseGCOverheadLimit -jar /share/Data01/tianwei/Bin/picard/CollectInsertSizeMetrics.jar \\
-#I=$temp/$smp.sort.rmdup.bam \\
-#O=$temp/$smp.Insert.xls \\
-#H=$temp/$smp.Insert.pdf \\
-#M=0.5
+PATH=\$PATH:/share/app/R-3.2.1/bin/
+export PATH
+/share/Data01/lynn/projects/bin/java/jdk1.8.0_144/bin/java  -Xmx2G -Djava.io.tmpdir=/share/Data01/tianwei/tmp/java_tmp/ -XX:MaxPermSize=512m -XX:-UseGCOverheadLimit -jar /share/Data01/tianwei/Bin/picard/CollectInsertSizeMetrics.jar \\
+I=$temp/$smp.sort.rmdup.bam \\
+O=$temp/$smp.Insert.xls \\
+H=$temp/$smp.Insert.pdf \\
+M=0.5
 
 #EstimateLibraryComplexity
-#/share/Data01/lynn/projects/bin/java/jdk1.8.0_144/bin/java  -Xmx2G -Djava.io.tmpdir=/share/Data01/tianwei/tmp/java_tmp/ -XX:MaxPermSize=512m -XX:-UseGCOverheadLimit -jar /share/app/picard-tools-1.137/picard.jar EstimateLibraryComplexity I=$temp/$smp.sort.rmdup.bam O=$temp/$smp.libComplexity.xls
+/share/Data01/lynn/projects/bin/java/jdk1.8.0_144/bin/java  -Xmx2G -Djava.io.tmpdir=/share/Data01/tianwei/tmp/java_tmp/ -XX:MaxPermSize=512m -XX:-UseGCOverheadLimit -jar /share/app/picard-tools-1.137/picard.jar EstimateLibraryComplexity I=$temp/$smp.sort.rmdup.bam O=$temp/$smp.libComplexity.xls
 
 #Copy Result
-#cp $temp/$smp.qprofile.ggplot2.pdf $out/$flowcell"."_".$lane."_".$smp.".qprofile.ggplot2.pdf
-#cp $temp/$smp.cov.chr.xml $temp/$flowcell\_$lane\_$smp.dup.xls $temp/$smp.map*.xls $temp/$smp.Insert.xls $temp/$smp.Insert.pdf $temp/$smp.libComplexity.xls $out/
-ln -s $temp/$smp.sort.bam* $out/
+cp $temp/$smp.qprofile.ggplot2.pdf $out/$flowcell"."_".$lane."_".$smp.".qprofile.ggplot2.pdf
+cp $temp/$smp.cov.chr.xml $temp/$flowcell\_$lane\_$smp.dup.xls $temp/$smp.map*.xls $temp/$smp.Insert.xls $temp/$smp.Insert.pdf $temp/$smp.libComplexity.xls $out/
 
 echo GoodRun!! > $temp/$smp.sign
 ";
@@ -125,39 +116,37 @@ rm $temp/1.sai
 
 #sort
 /share/app/samtools-1.2/bin/samtools calmd -b $temp/$smp.bftmp.bam $Ref->{$species} > $temp/$smp.sort.bam
-/share/app/samtools-1.2/bin/samtools index $temp/$smp.sort.bam
 
 #duplication
-#/share/Data01/lynn/projects/bin/java/jdk1.8.0_144/bin/java  -Xmx2G -Djava.io.tmpdir=/share/Data01/tianwei/tmp/java_tmp/ -XX:MaxPermSize=512m -XX:-UseGCOverheadLimit -jar /share/Data01/tianwei/Bin/picard/MarkDuplicates.jar MAX_FILE_HANDLES=1000 REMOVE_DUPLICATES=false \\
-#I=$temp/$smp.sort.bam O=$temp/$smp.sort.rmdup.bam \\
-#METRICS_FILE=$temp/$flowcell\_$lane\_$smp.duplicate.xls VALIDATION_STRINGENCY=SILENT
-#/share/app/samtools-1.2/bin/samtools index $temp/$smp.sort.rmdup.bam
-#rm $temp/$smp.bam $temp/$smp.bf.bam $temp/$smp.bftmp.bam $temp/$smp.sort.bam
+/share/Data01/lynn/projects/bin/java/jdk1.8.0_144/bin/java  -Xmx2G -Djava.io.tmpdir=/share/Data01/tianwei/tmp/java_tmp/ -XX:MaxPermSize=512m -XX:-UseGCOverheadLimit -jar /share/Data01/tianwei/Bin/picard/MarkDuplicates.jar MAX_FILE_HANDLES=1000 REMOVE_DUPLICATES=false \\
+I=$temp/$smp.sort.bam O=$temp/$smp.sort.rmdup.bam \\
+METRICS_FILE=$temp/$flowcell\_$lane\_$smp.duplicate.xls VALIDATION_STRINGENCY=SILENT
+/share/app/samtools-1.2/bin/samtools index $temp/$smp.sort.rmdup.bam
+rm $temp/$smp.bam $temp/$smp.bf.bam $temp/$smp.bftmp.bam $temp/$smp.sort.bam
 
 #plot
-#/share/Data01/lynn/projects/bin/java/jdk1.8.0_144/bin/java  -Xmx2G -Djava.io.tmpdir=/share/Data01/tianwei/tmp/java_tmp/ -XX:MaxPermSize=512m -XX:-UseGCOverheadLimit -jar /share/Data01/tianwei/Bin/TRIM_QC_4_SEQ500/qcmg/qprofiler-1.0.jar --log $temp/$smp.cov.chr.log --loglevel INFO --input $temp/$smp.sort.rmdup.bam --output $temp/$smp.cov.chr.xml
+/share/Data01/lynn/projects/bin/java/jdk1.8.0_144/bin/java  -Xmx2G -Djava.io.tmpdir=/share/Data01/tianwei/tmp/java_tmp/ -XX:MaxPermSize=512m -XX:-UseGCOverheadLimit -jar /share/Data01/tianwei/Bin/TRIM_QC_4_SEQ500/qcmg/qprofiler-1.0.jar --log $temp/$smp.cov.chr.log --loglevel INFO --input $temp/$smp.sort.rmdup.bam --output $temp/$smp.cov.chr.xml
 #perl /share/Data01/tianwei/Bin/TRIM_QC_4_SEQ500/parse_chr_data.pl -i $temp/$smp.cov.chr.xml > $temp/$smp.cov.chr.tsv
-#/share/Data01/tianwei/Bin/R-3.3.2/bin/Rscript $temp/cov.chr.R
+/share/Data01/tianwei/Bin/R-3.3.2/bin/Rscript $temp/cov.chr.R
 
 #mapping stat
-#perl /share/Data01/tianwei/Bin/RNA_module/AlignmentStat/AlignmentStat_forBwa/bin/BwaMapStat.pl -bam $temp/$smp.sort.rmdup.bam -key $temp/$smp.map -samtools /share/app/samtools-1.2/bin/samtools
+perl /share/Data01/tianwei/Bin/RNA_module/AlignmentStat/AlignmentStat_forBwa/bin/BwaMapStat.pl -bam $temp/$smp.sort.rmdup.bam -key $temp/$smp.map -samtools /share/app/samtools-1.2/bin/samtools
 
 #insert length calculation
-#PATH=\$PATH:/share/app/R-3.2.1/bin/
-#export PATH
-#/share/Data01/lynn/projects/bin/java/jdk1.8.0_144/bin/java  -Xmx2G -Djava.io.tmpdir=/share/Data01/tianwei/tmp/java_tmp/ -XX:MaxPermSize=512m -XX:-UseGCOverheadLimit -jar /share/Data01/tianwei/Bin/picard/CollectInsertSizeMetrics.jar \\
-#I=$temp/$smp.sort.rmdup.bam \\
-#O=$temp/$smp.Insert.xls \\
-#H=$temp/$smp.Insert.pdf \\
-#M=0.5
+PATH=\$PATH:/share/app/R-3.2.1/bin/
+export PATH
+/share/Data01/lynn/projects/bin/java/jdk1.8.0_144/bin/java  -Xmx2G -Djava.io.tmpdir=/share/Data01/tianwei/tmp/java_tmp/ -XX:MaxPermSize=512m -XX:-UseGCOverheadLimit -jar /share/Data01/tianwei/Bin/picard/CollectInsertSizeMetrics.jar \\
+I=$temp/$smp.sort.rmdup.bam \\
+O=$temp/$smp.Insert.xls \\
+H=$temp/$smp.Insert.pdf \\
+M=0.5
 
 #EstimateLibraryComplexity
-#/share/Data01/lynn/projects/bin/java/jdk1.8.0_144/bin/java  -Xmx2G -Djava.io.tmpdir=/share/Data01/tianwei/tmp/java_tmp/ -XX:MaxPermSize=512m -XX:-UseGCOverheadLimit -jar /share/app/picard-tools-1.137/picard.jar EstimateLibraryComplexity I=$temp/$smp.sort.rmdup.bam O=$temp/$smp.libComplexity.xls
+/share/Data01/lynn/projects/bin/java/jdk1.8.0_144/bin/java  -Xmx2G -Djava.io.tmpdir=/share/Data01/tianwei/tmp/java_tmp/ -XX:MaxPermSize=512m -XX:-UseGCOverheadLimit -jar /share/app/picard-tools-1.137/picard.jar EstimateLibraryComplexity I=$temp/$smp.sort.rmdup.bam O=$temp/$smp.libComplexity.xls
 
 #Copy Result
-#cp $temp/$smp.qprofile.ggplot2.pdf $out/$flowcell"."_".$lane."_".$smp.".qprofile.ggplot2.pdf
-#cp $temp/$smp.cov.chr.xml $temp/$flowcell\_$lane\_$smp.dup.xls $temp/$smp.map*.xls $temp/$smp.Insert.xls $temp/$smp.Insert.pdf $temp/$smp.libComplexity.xls $out/
-ln -s $temp/$smp.sort.bam* $out/
+cp $temp/$smp.qprofile.ggplot2.pdf $out/$flowcell"."_".$lane."_".$smp.".qprofile.ggplot2.pdf
+cp $temp/$smp.cov.chr.xml $temp/$flowcell\_$lane\_$smp.dup.xls $temp/$smp.map*.xls $temp/$smp.Insert.xls $temp/$smp.Insert.pdf $temp/$smp.libComplexity.xls $out/
 
 echo GoodRun!! > $temp/$smp.sign
 ";

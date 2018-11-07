@@ -10,8 +10,9 @@ my $fqfile=shift;
 my $pjid=shift;
 my $out=shift;
 my $prefix=shift;
+my $c=shift;
 
-my $temp="/share/Data01/tianwei/FASTQC/TEMP/";
+my $temp="/share/Data01/tianwei/FASTQC/";
 my $ftp="/ftp";
 mkpath("$out/$prefix");
 mkpath("$temp/$prefix");
@@ -32,8 +33,8 @@ print "$fq1\n$fq2\n";
 		$fq2="";
 	}
 	print S "
-!/bin/bash
-#\$ -N $cc[2]
+#!/bin/bash
+#\$ -N qc_$cc[2]
 #\$ -cwd
 #\$ -pe mpi 2 
 #\$ -l h_vmem=24G
@@ -43,12 +44,14 @@ print "$fq1\n$fq2\n";
 #\$ -e $temp/$prefix/$flowcell\_$lane\_$smp\_qc.e
 
 set -e
-/share/Data01/tianwei/Bin/DNA_CSAP_v5.2.7/bin/SOAPnuke filter -1 $fq1 -2 $fq2 -t 0,0,0,8 -Q 2 -o $temp
-mkdir -p $ftp/$pjid/Raw_Fastq/$cc[-1]
-cp $fq1 $ftp/$pjid/Raw_Fastq/$cc[-1]
-md5sum $fq1 > $ftp/$pjid/Raw_Fastq/$cc[-1]/$fq1.md5
-cp $fq2 $ftp/$pjid/Raw_Fastq/$cc[-1]
-md5sum $fq2 > $ftp/$pjid/Raw_Fastq/$cc[-1]/$fq2.md5
+mkdir -p $temp/$prefix/$flowcell\_$lane\_$smp
+/share/Data01/tianwei/Bin/DNA_CSAP_v5.2.7/bin/SOAPnuke filter -1 $fq1 -2 $fq2 -t 0,0,0,$c -Q 2 -o $temp/$prefix/$flowcell\_$lane\_$smp
+cp $temp/$prefix/$flowcell\_$lane\_$smp/*.txt $out/$prefix/
+#mkdir -p $ftp/$pjid/Raw_Fastq/$cc[-1]
+#cp $fq1 $ftp/$pjid/Raw_Fastq/$cc[-1]
+#md5sum $fq1 > $ftp/$pjid/Raw_Fastq/$cc[-1]/$fq1.md5
+#cp $fq2 $ftp/$pjid/Raw_Fastq/$cc[-1]
+#md5sum $fq2 > $ftp/$pjid/Raw_Fastq/$cc[-1]/$fq2.md5
 
 echo Success!! > $temp/$prefix/$flowcell\_$lane\_$smp\_QC.sign
 ";

@@ -9,7 +9,7 @@ if(@ARGV < 3){
 my $fqfile=shift;
 my $out=shift;
 my $prefix=shift;
-my $temp="/share/Data01/tianwei/FASTQC/TEMP/FQFILE";
+my $temp="/share/Data01/tianwei/FASTQC/";
 mkpath("$out/$prefix");
 mkpath("$temp/$prefix");
 
@@ -29,8 +29,8 @@ print "$fq1\n$fq2\n";
 		$fq2="";
 	}
 	print S "
-!/bin/bash
-#\$ -N $cc[2]
+#!/bin/bash
+#\$ -N fqc_$cc[2]
 #\$ -cwd
 #\$ -pe mpi 2 
 #\$ -l h_vmem=24G
