@@ -6,7 +6,6 @@ use File::Path;
 my $record="/share/fileshare/BGI_LAB/TRACKING_DOCUMENT/8SampleSheet/CSV";
 my $bakup="/share/fileshare/report/CSV_Backup";
 my $output="/share/fileshare/report/Result";
-my $temp="/share/fileshare/report/TempDir";
 my $CalcuDir="/share/Data01/tianwei/FASTQC";
 my $datadir="/share";
 my $rpath="/share/app/R-3.2.1/bin/Rscript";
@@ -41,9 +40,9 @@ while(1){
 
 			$a[5]=~/$flowcell\_(L\d+)\_(.*)/;
 			my ($lane,$smpID)=($1,$2);
-			my ($project,$realID,$species)=@a[1..3]; $project=~s/\_.*//; $project=~s/\-.*//;
+			my ($project,$realID,$species,$Fq1Length,$Fq2Length)=@a[1..3,7,8]; $project=~s/\_.*//; $project=~s/\-.*//;
 			my $mc_type=$zebra; $mc_type=~s/\d+$//;
-			$fqfiles{$project}{"$datadir/$mc_type"."Data01"."/$zebra/$flowcell/$lane/$a[5]\t$species\t$realID\t$project"}=1;
+			$fqfiles{$project}{"$datadir/$mc_type"."Data01"."/$zebra/$flowcell/$lane/$a[5]\t$species\t$realID\t$project\t$Fq1Length\t$Fq2Length"}=1;
 
 	                opendir DD,"$datadir/$mc_type"."Data01"."/$zebra/$flowcell/$lane/";
 	                foreach my $ff(readdir DD){
@@ -55,12 +54,8 @@ while(1){
 	                }
 
 		}
-#		open OS,">$temp/summary.txt";
-#		foreach my $key(sort keys %summary){
-#		        print OS "$summary{$key}\t$key\n";
-#		}
-#		close OS;
-#		p
+
+		# Output FqFiles Record and  one Main file to generate the shells.
 		foreach my $project(keys %fqfiles){
 			mkpath("$output/".$project."/".$zebra."_".$flowcell) unless -e ("$output/".$project."/".$zebra."_".$flowcell);
 			my $tmpout= $output."/".$project."/".$zebra."_".$flowcell;
@@ -77,19 +72,20 @@ while(1){
                 	foreach my $key(sort keys %$s_summary){
                         	print O_SH "cp -r $s_summary->{$key} $tmpout/1_SUMMARY\n";
                 	}
-			print O_SH "\n#Step2. FTP copy \nperl /share/Data01/tianwei/Bin/TRIM_QC_4_SEQ500/ftp_FQ.pl $tmpout/fqfiles.txt $project $tmpout\n";
-			print O_SH "#nohup sh $tmpout/FTP_FQ.sh\n";
-		#	print O_SH "perl /share/Data01/tianwei/Bin/TRIM_QC_4_SEQ500/trim_QC_v1.pl $temp/summary.txt "."$output/".$project."_".$zebra."_".$flowcell."/"."1_SUMMARY $rpath $temp\n";
-			print O_SH "\n#Step3. FASTQC\nmkdir -p $tmpout/2_FASTQC\n";
-			print O_SH "perl /share/Data01/tianwei/Bin/TRIM_QC_4_SEQ500/get_fastqc.pl $tmpout/fqfiles.txt $output $project/$zebra\_$flowcell/2_FASTQC\n";		
+			print O_SH "\n#Step2. FASTQC\nmkdir -p $tmpout/2_FASTQC\n";
+			print O_SH "perl /share/Data01/tianwei/Bin/TRIM_QC_4_SEQ500/get_fastqc.pl $tmpout/fqfiles.txt $output $CalcuDir $project/$zebra\_$flowcell/2_FASTQC\n";		
 			print O_SH "#sh $tmpout/2_FASTQC/qsub.sh\n";
 
-			print O_SH "\n#Step4. QualityControl\nmkdir -p $tmpout/3_QualityFilter\n";
-                        print O_SH "perl /share/Data01/tianwei/Bin/TRIM_QC_4_SEQ500/QC.pl $tmpout/fqfiles.txt $project $output $project/$zebra\_$flowcell/3_QualityFilter 0 \n";
+			print O_SH "\n#Step3. Quality Filter\nmkdir -p $tmpout/3_QualityFilter\n";
+                        print O_SH "perl /share/Data01/tianwei/Bin/TRIM_QC_4_SEQ500/QC.pl $tmpout/fqfiles.txt $project $output $CalcuDir $project/$zebra\_$flowcell/3_QualityFilter\n";
                         print O_SH "#sh $tmpout/3_QualityFilter/qsub.sh\n";
 
-			print O_SH "\n#Step5. Mapping and calculation\nperl /share/Data01/tianwei/Bin/TRIM_QC_4_SEQ500/get_alignment.pl $tmpout/fqfiles.txt $output $CalcuDir/$zebra\_$flowcell/4_Alignment\n";
-			print O_SH "#sh $CalcuDir/$zebra\_$flowcell/4_Alignment/qsub_mapping.sh\n";
+			print O_SH "\n#Step4. Copy Data to FTP\n";
+                        print O_SH "perl /share/Data01/tianwei/Bin/TRIM_QC_4_SEQ500/ftp_FQ.pl $tmpout/fqfiles.txt $project $tmpout $CalcuDir/$project/$zebra\_$flowcell/3_QualityFilter\n";
+                        print O_SH "#nohup sh $tmpout/FTP_FQ.sh\n";
+
+			print O_SH "\n#Step5. Mapping and calculation\nperl /share/Data01/tianwei/Bin/TRIM_QC_4_SEQ500/get_alignment.pl $tmpout/fqfiles.txt $output $CalcuDir/$project/$zebra\_$flowcell/4_Alignment\n";
+			print O_SH "#sh $CalcuDir/$project/$zebra\_$flowcell/4_Alignment/qsub_mapping.sh\n";
 
 			close O_SH;
 		}

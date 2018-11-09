@@ -8,7 +8,8 @@ if(@ARGV < 3){
 }
 my $fqfile=shift;
 my $pjid=shift;
-my $out=shift; $out="$out";
+my $out=shift;
+my $ToTest=shift;
 my $ftp="/ftp";
 
 (open FQ,$fqfile) || die $!;
@@ -17,18 +18,41 @@ my %to_cp;
 while(<FQ>){
 	chomp;
 	my @cc=split;
+	$cc[0]=~/(CL\d+)\_(L\d+)\_(.*)/ or $cc[0]=~/(V\d+)\_(L\d+)\_(.*)/;
+        my ($flowcell,$lane,$smp)=($1,$2,$3);
 
-	my $smp_id=$cc[2];
-	push @{$to_cp{$smp_id}},$cc[0];
+	my $TestContent="no";
+	my $TestContent=`cat $ToTest/$flowcell\_$lane\_$smp\_fqc.sign` if -e "$ToTest/$flowcell\_$lane\_$smp\_fqc.sign"; chomp $TestContent;
+
+	my $FqToCopy =$cc[0];
+	$FqToCopy="$ToTest/$flowcell\_$lane\_$smp/Clean_$flowcell\_$lane\_$smp" if $TestContent eq "Success!!";
+
+	push @{$to_cp{$cc[2]}},$FqToCopy;
 }
 foreach my $id(keys %to_cp){
 	my @fqs=@{$to_cp{$id}};
 	foreach my $fq(@fqs){
-		my @ccc=split(/\//,$fq);
-		print QSUB "mkdir -p $ftp/$pjid/Raw_Fastq/$id\n";
-		print QSUB "cp $fq\_1.fq.gz $fq\_2.fq.gz $ftp/$pjid/Raw_Fastq/$id\n";
-		print QSUB "md5sum $fq\_1.fq.gz > $ftp/$pjid/Raw_Fastq/$id/$ccc[-1]\_1.fq.gz.md5\n";
-		print QSUB "md5sum $fq\_2.fq.gz > $ftp/$pjid/Raw_Fastq/$id/$ccc[-1]\_2.fq.gz.md5\n";
+		my ($fq1,$fq2)=($fq."_1.fq.gz",$fq."_2.fq.gz");
+        	if(-e $fq1){
+			my @ccc=split(/\//,$fq);
+                	if (-e $fq2){
+                       		print QSUB "
+mkdir -p $ftp/$pjid/Raw_Fastq/$id
+cp $fq\_1.fq.gz $ftp/$pjid/Raw_Fastq/$id
+md5sum $fq\_1.fq.gz > $ftp/$pjid/Raw_Fastq/$id/$ccc[-1]\_1.fq.gz.md5
+cp $fq\_2.fq.gz $ftp/$pjid/Raw_Fastq/$id
+md5sum $fq\_2.fq.gz > $ftp/$pjid/Raw_Fastq/$id/$ccc[-1]\_2.fq.gz.md5
+";
+                	}else{
+				print QSUB "
+mkdir -p $ftp/$pjid/Raw_Fastq/$id
+cp $fq\_1.fq.gz $ftp/$pjid/Raw_Fastq/$id
+md5sum $fq\_1.fq.gz > $ftp/$pjid/Raw_Fastq/$id/$ccc[-1]\_1.fq.gz.md5
+";
+                	}
+        	}else{
+                	die "Error: the file $fq1 is not exists!";
+        	}
 	}
 }
 close QSUB;
