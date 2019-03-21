@@ -16,5 +16,5 @@ git commit  -m  'trim fq files'
 #git remote rm BGI
 
 ## push 
-#git remote add BGI git@github.com/taylortianwei/TRIM_QC_4_SEQ500.git
+#git remote add BGI git@github.com:taylortianwei/TRIM_QC_4_SEQ500.git
 git push -f -u BGI master

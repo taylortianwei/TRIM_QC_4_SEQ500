@@ -23,14 +23,14 @@ mkpath("$CalcuDir");
 open QSUB,">$CalcuDir/qsub_mapping.sh";
 while(<FQ>){
 	chomp;
-	my @cc=split;
+	my @cc=split(/\t/);
 	my $species=$cc[1];
 	push @{$rlID_bcID{$cc[3]."/".$cc[2]}},$cc[0].",".$cc[1];
 
 	$cc[0]=~/(CL\d+)\_(L\d+)\_(.*)/ or $cc[0]=~/(V\d+)\_(L\d+)\_(.*)/;
 	my ($flowcell,$lane,$smp)=($1,$2,$3);
 	my $temp="$CalcuDir/$lane\_$smp";
-	my $out="$OutDir/$cc[3]/$cc[2]";
+	my $out="$OutDir/$cc[3]/SAMPLES/$cc[2]";
 	mkpath("$temp");
 	mkpath("$out");
 

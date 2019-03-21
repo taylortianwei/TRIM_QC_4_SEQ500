@@ -13,13 +13,14 @@ my $prefix=shift;
 mkpath("$out/$prefix");
 mkpath("$temp/$prefix");
 
-my $Adaptors="/share/Data01/tianwei/Test/human/test/fastqc/adaptors.txt";
+my $Adaptors="/share/Data01/tianwei/Bin/TRIM_QC_4_SEQ500/adaptors.txt";
 
 (open FQ,$fqfile) || die $!;
 open QQ,">$out/$prefix/qsub.sh";
+print QQ "cd $temp/$prefix\n";
 while(<FQ>){
 	chomp;
-	my @cc=split;
+	my @cc=split(/\t/);
 	$cc[0]=~/(CL\d+)\_(L\d+)\_(.*)/ or $cc[0]=~/(V\d+)\_(L\d+)\_(.*)/;
 	my ($flowcell,$lane,$smp)=($1,$2,$3);
 	(open S,">$temp/$prefix/$flowcell\_$lane\_$smp\_fqc.sh") || die $!;
@@ -42,8 +43,8 @@ while(<FQ>){
 #!/bin/bash
 #\$ -N fqc_$cc[2]
 #\$ -cwd
-#\$ -pe mpi 2 
-#\$ -l h_vmem=24G
+#\$ -pe mpi 1 
+#\$ -l h_vmem=5G
 #\$ -l virtual_free=100M
 #\$ -l h_rt=72:00:00
 #\$ -o $temp/$prefix/$flowcell\_$lane\_$smp\_fqc.o
@@ -51,7 +52,6 @@ while(<FQ>){
 
 set -e
 /share/app/FastQC-0.11.3/fastqc $Parameter
-cp $temp/$prefix/*.html $temp/$prefix/*.zip $out/$prefix
 echo Success!! > $temp/$prefix/$flowcell\_$lane\_$smp\_fqc.sign
 ";
 	close S;
@@ -59,4 +59,5 @@ echo Success!! > $temp/$prefix/$flowcell\_$lane\_$smp\_fqc.sign
 	print QQ "qsub $temp/$prefix/$flowcell\_$lane\_$smp\_fqc.sh\n";
 
 }
+print QQ "cp $temp/$prefix/*.html $out/$prefix\n";
 close QSUB;
