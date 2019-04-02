@@ -17,7 +17,7 @@ my $Adaptors="/share/Data01/tianwei/Bin/TRIM_QC_4_SEQ500/adaptors.txt";
 
 (open FQ,$fqfile) || die $!;
 open QQ,">$out/$prefix/qsub.sh";
-print QQ "cd $temp/$prefix\n";
+#print QQ "cd $temp/$prefix\n";
 while(<FQ>){
 	chomp;
 	my @cc=split(/\t/);
@@ -29,11 +29,9 @@ while(<FQ>){
 
         my $Parameter;
         if(-e $fq1){
-                if (-e $fq2){
-                        $Parameter="-o $temp/$prefix -a $Adaptors $fq1 $fq2";
-                }else{
-                        $Parameter="-o $temp/$prefix -a $Adaptors $fq1"
-                }
+                $Parameter="-o $temp/$prefix -a $Adaptors $fq1 $fq2";
+	}elsif(-e $cc[0].".fq.gz"){
+		$Parameter="-o $temp/$prefix -a $Adaptors $cc[0].fq.gz"
         }else{
                 die "Error: the file $fq1 is not exists!";
         }
@@ -52,12 +50,17 @@ while(<FQ>){
 
 set -e
 /share/app/FastQC-0.11.3/fastqc $Parameter
+
+cp $temp/$prefix/*.html $out/$prefix
+
 echo Success!! > $temp/$prefix/$flowcell\_$lane\_$smp\_fqc.sign
 ";
 	close S;
 	
-	print QQ "qsub $temp/$prefix/$flowcell\_$lane\_$smp\_fqc.sh\n";
-
+	my $ToSee="";
+	$ToSee=`cat $temp/$prefix/$flowcell\_$lane\_$smp\_fqc.sign` if -e "$temp/$prefix/$flowcell\_$lane\_$smp\_fqc.sign";	
+	unless ($ToSee =~/Success/){
+		print QQ "qsub $temp/$prefix/$flowcell\_$lane\_$smp\_fqc.sh\n";
+	}
 }
-print QQ "cp $temp/$prefix/*.html $out/$prefix\n";
 close QSUB;

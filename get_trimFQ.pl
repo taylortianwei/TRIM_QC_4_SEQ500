@@ -29,16 +29,11 @@ while(<FQ>){
 
 	my $Parameter;
 	if(-e $fq1){
-		if (-e $fq2){
-			my $TmpLengthFq2=length((split(/\n/,`less $fq2 | head`))[1]);
-			die "The fq length for $fq2 is wrong!!\n" if $TmpLengthFq2 < 10;
-			my $ToTrim=$TmpLengthFq2-$Fq2Length;
-			$Parameter="-1 $fq1 -2 $fq2 -t 0,0,0,$ToTrim -Q 2";
-		}else{
-			my $TmpLengthFq1=length((split(/\n/,`less $fq1 | head`))[1]);
-			die "The fq length for $fq1 is wrong!!\n" if $TmpLengthFq1 < 10;
-			$Parameter="-1 $fq1 -Q 2";
-		}	
+		my $TmpLengthFq2=length((split(/\n/,`less $fq2 | head`))[1]);
+		my $ToTrim=$TmpLengthFq2-$Fq2Length;
+		$Parameter="-1 $fq1 -2 $fq2 -t 0,0,0,$ToTrim -Q 2";
+	}elsif(-e $cc[0].".fq.gz"){
+		$Parameter="-1 $cc[0].fq.gz -Q 2";
 	}else{
 		die "Error: the file $fq1 is not exists!";
 	}

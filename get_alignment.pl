@@ -25,12 +25,12 @@ while(<FQ>){
 	chomp;
 	my @cc=split(/\t/);
 	my $species=$cc[1];
-	push @{$rlID_bcID{$cc[3]."/".$cc[2]}},$cc[0].",".$cc[1];
+	push @{$rlID_bcID{$cc[4]."/".$cc[2]}},$cc[0].",".$cc[1];
 
 	$cc[0]=~/(CL\d+)\_(L\d+)\_(.*)/ or $cc[0]=~/(V\d+)\_(L\d+)\_(.*)/;
 	my ($flowcell,$lane,$smp)=($1,$2,$3);
 	my $temp="$CalcuDir/$lane\_$smp";
-	my $out="$OutDir/$cc[3]/SAMPLES/$cc[2]";
+	my $out="$OutDir/$cc[4]/SAMPLES/$cc[2]";
 	mkpath("$temp");
 	mkpath("$out");
 
@@ -45,8 +45,7 @@ while(<FQ>){
 
 	my $Parameter;
 	if(-e $fq1){
-                if (-e $fq2){
-			$Parameter="
+		$Parameter="
 /share/Data01/tianwei/projects/bin/bwa-0.7.12/bwa aln -o 1 -e 50 -m 100000 -t 4 -i 15 -q 10 -f $temp/1.sai $Ref->{$species} $fq1
 /share/Data01/tianwei/projects/bin/bwa-0.7.12/bwa aln -o 1 -e 50 -m 100000 -t 4 -i 15 -q 10 -f $temp/2.sai $Ref->{$species} $fq2
 
@@ -54,14 +53,13 @@ while(<FQ>){
 
 rm $temp/1.sai $temp/2.sai
 "
-                }else{
-			$Parameter="
-/share/Data01/tianwei/projects/bin/bwa-0.7.12/bwa aln -o 1 -e 50 -m 100000 -t 4 -i 15 -q 10 -f $temp/1.sai $Ref->{$species} $fq1
+	}elsif(-e $FqToAnalysis.".fq.gz"){
+		$Parameter="
+/share/Data01/tianwei/projects/bin/bwa-0.7.12/bwa aln -o 1 -e 50 -m 100000 -t 4 -i 15 -q 10 -f $temp/1.sai $Ref->{$species} $FqToAnalysis.fq.gz
 
-/share/Data01/tianwei/projects/bin/bwa-0.7.12/bwa samse -r \"\@RG\\tID:$flowcell\\tPL:BGI\\tPU:131129_I191_FCH7CU0ADXX_$lane\_$flowcell\\tLB:$flowcell\\tSM:V5YH_1\\tCN:BGI\" $Ref->{$species} $temp/1.sai $fq1 | /share/app/samtools-1.2/bin/samtools view -b -S -T $Ref->{$species} - > $temp/$smp.bam
+/share/Data01/tianwei/projects/bin/bwa-0.7.12/bwa samse -r \"\@RG\\tID:$flowcell\\tPL:BGI\\tPU:131129_I191_FCH7CU0ADXX_$lane\_$flowcell\\tLB:$flowcell\\tSM:V5YH_1\\tCN:BGI\" $Ref->{$species} $temp/1.sai $FqToAnalysis.fq.gz | /share/app/samtools-1.2/bin/samtools view -b -S -T $Ref->{$species} - > $temp/$smp.bam
 rm $temp/1.sai
-"
-                }
+";
         }else{
                 print "Error: the file $fq1 is not exists!\n";
         }

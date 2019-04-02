@@ -46,7 +46,7 @@ while(1){
 			$a[5]=~/$flowcell\_(L\d+)\_(.*)/;
 			my ($lane,$smpID)=($1,$2);
 			#my ($project,$subproject,$RunStatus,$realID,$species,$Fq1Length,$Fq2Length)=@a[10..12,1,3,7,8];
-			my ($project,$realID,$species,$Fq1Length,$Fq2Length)=@a[1,1,3,7,8];$project=~s/\_.*//; $project=~s/\-.*//;
+			my ($project,$realID,$SubmitID,$species,$Fq1Length,$Fq2Length)=@a[1,1,2,3,7,8];$project=~s/\_.*//; $project=~s/\-.*//;
 
                         my $mc_type=$zebra; $mc_type=~s/\d+$//;
 			#next unless $RunStatus eq "COMPLETE";
@@ -55,7 +55,11 @@ while(1){
 			unless (-e "$datadir/$mc_type$data/$zebra/$flowcell/$lane/$a[5]\_1.fq.gz"){
 				$data="Data00";
 			}
-			$fqfiles{$project}{"$datadir/$mc_type$data/$zebra/$flowcell/$lane/$a[5]\t$species\t$realID\t$project\t$Fq1Length\t$Fq2Length"}=1;
+			if ($fqfiles{$project}{"$datadir/$mc_type$data/$zebra/$flowcell/$lane/$a[5]\t$species\t$realID\t$SubmitID\t$project\t$Fq1Length\t$Fq2Length"}){
+				print "Error: Duplex value for : $record/$ff : $_\n";
+				exit(1)
+}
+			$fqfiles{$project}{"$datadir/$mc_type$data/$zebra/$flowcell/$lane/$a[5]\t$species\t$realID\t$SubmitID\t$project\t$Fq1Length\t$Fq2Length"}=1;
 
 	                opendir DD,"$datadir/$mc_type$data/$zebra/$flowcell/$lane/";
 	                foreach my $sf(readdir DD){
@@ -70,9 +74,10 @@ while(1){
 		# Output FqFiles Record and  one Main file to generate the shells.
 		next if scalar(keys %fqfiles) == 0;
 		foreach my $project(keys %fqfiles){
-			$flowcell.="_BADRUN" if $ff=~/BAD/i;
-			mkpath("$output/".$project."/".$zebra."_".$flowcell) unless -e ("$output/".$project."/".$zebra."_".$flowcell);
-			my $tmpout= $output."/".$project."/".$zebra."_".$flowcell;
+			my $BADRUN=""; $BADRUN="_BADRUN" if $ff=~/BAD/i;
+			my $OUTFCL=$flowcell.$BADRUN;
+			mkpath("$output/".$project."/".$zebra."_".$OUTFCL) unless -e ("$output/".$project."/".$zebra."_".$OUTFCL);
+			my $tmpout= $output."/".$project."/".$zebra."_".$OUTFCL;
 			open OQ,">$tmpout/fqfiles.txt";
 			my $s_fqfiles=$fqfiles{$project};
 			foreach my $fq(sort keys %$s_fqfiles){
@@ -89,23 +94,23 @@ while(1){
                         	print O_SH "cp -r $s_summary->{$key} $tmpout/1_SUMMARY\n";
                 	}
 			print O_SH "\n#Step2. FASTQC\nmkdir -p $tmpout/2_FASTQC\n";
-			print O_SH "perl $Bin/get_fastqc.pl $tmpout/fqfiles.txt $output $CalcuDir $project/$zebra\_$flowcell/2_FASTQC\n";		
-			print O_SH "#sh $tmpout/2_FASTQC/qsub.sh\n";
+			print O_SH "perl $Bin/get_fastqc.pl $tmpout/fqfiles.txt $output $CalcuDir $project/$zebra\_$OUTFCL/2_FASTQC\n";		
+			print O_SH "sh $tmpout/2_FASTQC/qsub.sh\n";
 
 			print O_SH "\n#Step3. Quality Filter\nmkdir -p $tmpout/3_QualityFilter\n";
-                        print O_SH "perl $Bin/get_trimFQ.pl $tmpout/fqfiles.txt $project $output $CalcuDir $project/$zebra\_$flowcell/3_QualityFilter\n";
+                        print O_SH "perl $Bin/get_trimFQ.pl $tmpout/fqfiles.txt $project $output $CalcuDir $project/$zebra\_$OUTFCL/3_QualityFilter\n";
                         print O_SH "#sh $tmpout/3_QualityFilter/qsub.sh\n";
 
 			print O_SH "\n#Step4. Copy Data to FTP\n";
-                        print O_SH "perl $Bin/ftp_FQ.pl $tmpout/fqfiles.txt $project $tmpout $CalcuDir/$project/$zebra\_$flowcell/3_QualityFilter\n";
+                        print O_SH "perl $Bin/ftp_FQ.pl $tmpout/fqfiles.txt $project $tmpout $CalcuDir/$project/$zebra\_$OUTFCL/3_QualityFilter\n";
                         print O_SH "#nohup sh $tmpout/FTP_FQ.sh\n";
 
 			print O_SH "\n#Step5. Backup Data to Cloud\n#copy data login: aus-login-1-2 192.168.233.14\n";
-                        print O_SH "perl $Bin/copydata.pl $tmpout/fqfiles.txt $CopyDir $zebra\_$flowcell\n";
-                        print O_SH "#nohup sh $CopyDir/$zebra\_$flowcell/Main.sh\n";
+                        print O_SH "perl $Bin/copydata.pl $tmpout/fqfiles.txt $CopyDir $zebra\_$OUTFCL\n";
+                        print O_SH "#nohup sh $CopyDir/$zebra\_$OUTFCL/Main.sh\n";
 
-			print O_SH "\n#Step6. Mapping and calculation\nperl $Bin/get_alignment.pl $tmpout/fqfiles.txt $output $CalcuDir/$project/$zebra\_$flowcell/4_Alignment\n";
-			print O_SH "#sh $CalcuDir/$project/$zebra\_$flowcell/4_Alignment/qsub_mapping.sh\n";
+			print O_SH "\n#Step6. Mapping and calculation\nperl $Bin/get_alignment.pl $tmpout/fqfiles.txt $output $CalcuDir/$project/$zebra\_$OUTFCL/4_Alignment\n";
+			print O_SH "#sh $CalcuDir/$project/$zebra\_$OUTFCL/4_Alignment/qsub_mapping.sh\n";
 
 			close O_SH;
 		}
