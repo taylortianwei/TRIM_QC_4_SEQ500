@@ -11,8 +11,9 @@ if(@ARGV < 1){
 	exit(1);
 }
 my $fqfile=shift;
-my $Log="/opt/sharefolder/05.BGIAU-Bioinformatics/Bin/LogFilesHash/LogFiles.hash";
-my $json=read_file($Log, { binmode => ':raw' });
+
+my $filerecord="$Bin/FilesHash/Files.hash";
+my $json=read_file($filerecord, { binmode => ':raw' });
 my %FilePath=%{ decode_json $json };
 #print Dumper %FilePath;
 
@@ -27,30 +28,30 @@ while(<FQ>){
 	
 	$cc[0]=~/(Zebra\d+)\/(CL\d+)/ or $cc[0]=~/(Panda\d+)\/(V\d+)/;
 
-        $flowcell=$cc[4].":".join("_",$1,$2);
+        $flowcell=$cc[4]."-$cc[5]:".join("_",$1,$2);
 	if(-e $cc[0]."_1.fq.gz"){
 		my $file=`less $cc[0]\_1.fq.gz| head -n 2`;
 		my ($FqName,$FqSeq)=split(/\n/,$file);
-		unless (length($FqSeq) == $cc[5]){
-			print "$cc[4]: FASTQ Length Wrong: $cc[0]\_1.fq.gz is ".length($FqSeq).", but your CSV says $cc[5]\n";
+		unless (length($FqSeq) == $cc[6]){
+			print "$cc[4]-$cc[5]: FASTQ Length Wrong: $cc[0]\_1.fq.gz is ".length($FqSeq).", but your CSV says $cc[6]\n";
 			exit(1);
 		}
 	}elsif(-e $cc[0].".fq.gz"){
 		my $file=`less $cc[0].fq.gz| head -n 2`;
                 my ($FqName,$FqSeq)=split(/\n/,$file);
-		unless (length($FqSeq) == $cc[5]){
-                        print "$cc[4]: FASTQ Length Wrong: $cc[0].fq.gz is ".length($FqSeq).", but your CSV says $cc[5]\n";
+		unless (length($FqSeq) == $cc[6]){
+                        print "$cc[4]-$cc[5]: FASTQ Length Wrong: $cc[0].fq.gz is ".length($FqSeq).", but your CSV says $cc[6]\n";
                         exit(1);
                 }
 	}else{
-		print "$cc[4]: FASTQ NOT EXIST: $cc[0]\_1.fq.gz etc.\n";
+		print "$cc[4]-$cc[5]: FASTQ NOT EXIST: $cc[0]\_1.fq.gz etc.\n";
 		exit(1);
 	}
 	if (-e $cc[0]."_2.fq.gz"){
 		my $file=`less $cc[0]\_2.fq.gz| head -n 2`;
                 my ($FqName,$FqSeq)=split(/\n/,$file);
-		unless (length($FqSeq) == $cc[5]){
-                        print "$cc[4]: FASTQ Length Wrong: $cc[0]\_2.fq.gz is ".length($FqSeq).", but your CSV says $cc[6]\n";
+		unless (length($FqSeq) == $cc[7]){
+                        print "$cc[4]-$cc[5]: FASTQ Length Wrong: $cc[0]\_2.fq.gz is ".length($FqSeq).", but your CSV says $cc[7]\n";
                         exit(1);
                 }
 	}

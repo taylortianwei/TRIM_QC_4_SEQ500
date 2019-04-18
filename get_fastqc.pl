@@ -13,7 +13,7 @@ my $prefix=shift;
 mkpath("$out/$prefix");
 mkpath("$temp/$prefix");
 
-my $Adaptors="/share/Data01/tianwei/Bin/TRIM_QC_4_SEQ500/adaptors.txt";
+my $Adaptors="/opt/sharefolder/05.BGIAU-Bioinformatics/Bin/TRIM_QC_4_SEQ500/adaptors.txt";
 
 (open FQ,$fqfile) || die $!;
 open QQ,">$out/$prefix/qsub.sh";
@@ -22,6 +22,7 @@ while(<FQ>){
 	chomp;
 	my @cc=split(/\t/);
 	$cc[0]=~/(CL\d+)\_(L\d+)\_(.*)/ or $cc[0]=~/(V\d+)\_(L\d+)\_(.*)/;
+
 	my ($flowcell,$lane,$smp)=($1,$2,$3);
 	(open S,">$temp/$prefix/$flowcell\_$lane\_$smp\_fqc.sh") || die $!;
 	my ($fq1,$fq2)=($cc[0]."_1.fq.gz",$cc[0]."_2.fq.gz");
@@ -51,7 +52,7 @@ while(<FQ>){
 set -e
 /share/app/FastQC-0.11.3/fastqc $Parameter
 
-cp $temp/$prefix/*.html $out/$prefix
+cp $temp/$prefix/$flowcell\_$lane\_$smp*.html $out/$prefix
 
 echo Success!! > $temp/$prefix/$flowcell\_$lane\_$smp\_fqc.sign
 ";

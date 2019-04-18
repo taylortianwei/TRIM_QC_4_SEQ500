@@ -14,10 +14,11 @@ my $fqfile=shift;
 my $pjid=shift;
 my $out=shift;
 my $ToTest=shift;
-my $ftp="/ftp";
-my $Log="/opt/sharefolder/05.BGIAU-Bioinformatics/Bin/LogFilesHash/LogFiles.hash";
-my $json=read_file($Log, { binmode => ':raw' });
+
+my $filerecord="$Bin/FilesHash/Files.hash";
+my $json=read_file($filerecord, { binmode => ':raw' });
 my %FilePath=%{ decode_json $json };
+
 #print Dumper %FilePath;
 
 (open FQ,$fqfile) || die $!;
@@ -51,30 +52,30 @@ foreach my $id(keys %to_cp){
                        	print QSUB "
 #copy data login: aus-login-1-2 192.168.233.14
 
-mkdir -p $ftp/$pjid/Raw_Fastq/$id
-cp $fq\_1.fq.gz $ftp/$pjid/Raw_Fastq/$id
-md5sum $fq\_1.fq.gz | perl -ne 's/(\\s+).*\\//\$1/;print' > $ftp/$pjid/Raw_Fastq/$id/$ccc[-1]\_1.fq.gz.md5
-cp $fq\_2.fq.gz $ftp/$pjid/Raw_Fastq/$id
-md5sum $fq\_2.fq.gz | perl -ne 's/(\\s+).*\\//\$1/;print' > $ftp/$pjid/Raw_Fastq/$id/$ccc[-1]\_2.fq.gz.md5
+mkdir -p $$FilePath{ftp}/$pjid/Raw_Fastq/$id
+cp $fq\_1.fq.gz $$FilePath{ftp}/$pjid/Raw_Fastq/$id
+md5sum $fq\_1.fq.gz | perl -ne 's/(\\s+).*\\//\$1/;print' > $$FilePath{ftp}/$pjid/Raw_Fastq/$id/$ccc[-1]\_1.fq.gz.md5
+cp $fq\_2.fq.gz $$FilePath{ftp}/$pjid/Raw_Fastq/$id
+md5sum $fq\_2.fq.gz | perl -ne 's/(\\s+).*\\//\$1/;print' > $$FilePath{ftp}/$pjid/Raw_Fastq/$id/$ccc[-1]\_2.fq.gz.md5
 time=\$(date \"+%Y%m%d %H:%M:%S\")
 echo \"[\${time}]	$pjid	$id	$SubmitID	$ccc[-1]	$fq\" >> $FilePath{CopyFTQ} 
 ";
 			if(-e "$dir/Basic_Statistics_of_Sequencing_Quality.txt"){
 				print QSUB "
-cp $dir/Basic_Statistics_of_Sequencing_Quality.txt $ftp/$pjid/Raw_Fastq/$id/$ccc[-1].FilterStatistics.txt
+cp $dir/Basic_Statistics_of_Sequencing_Quality.txt $$FilePath{ftp}/$pjid/Raw_Fastq/$id/$ccc[-1].FilterStatistics.txt
 ";
 			}
 		}elsif(-e $fq.".fq.gz"){
 			print QSUB "
-mkdir -p $ftp/$pjid/Raw_Fastq/$id
-cp $fq.fq.gz $ftp/$pjid/Raw_Fastq/$id
-md5sum $fq.fq.gz | perl -ne 's/(\\s+).*\\//\$1/;print' > $ftp/$pjid/Raw_Fastq/$id/$ccc[-1].fq.gz.md5
+mkdir -p $$FilePath{ftp}/$pjid/Raw_Fastq/$id
+cp $fq.fq.gz $$FilePath{ftp}/$pjid/Raw_Fastq/$id
+md5sum $fq.fq.gz | perl -ne 's/(\\s+).*\\//\$1/;print' > $$FilePath{ftp}/$pjid/Raw_Fastq/$id/$ccc[-1].fq.gz.md5
 time=\$(date \"+%Y%m%d %H:%M:%S\")
 echo \"[\${time}]       $pjid   $id     $SubmitID       $ccc[-1]        $fq\" >> $FilePath{CopyFTQ}
 ";
 			if(-e "$dir/Basic_Statistics_of_Sequencing_Quality.txt"){
 				print QSUB "
-cp $dir/Basic_Statistics_of_Sequencing_Quality.txt $ftp/$pjid/Raw_Fastq/$id/$ccc[-1].FilterStatistics.txt
+cp $dir/Basic_Statistics_of_Sequencing_Quality.txt $$FilePath{ftp}/$pjid/Raw_Fastq/$id/$ccc[-1].FilterStatistics.txt
 ";
 			}
         	}else{
