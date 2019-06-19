@@ -45,7 +45,7 @@ foreach my $ff(readdir D_R){
 	my %summary; my %fqfiles;my %projects; my %BadFQ; my %main; my %lanes; my %DeMultiplex;
 
 	open II,"$FilePath{record}/$ff"; my %C_Status;
-	my $Skip="[$ff] NO Valid Lines in CSV File\n";
+	my $Skip="[$ff] NO Lane Info\n";
 	while(<II>){
 		chomp; s/\s+$//g;
 		my @a=split(/\,/,$_);
@@ -77,10 +77,10 @@ foreach my $ff(readdir D_R){
 			}
 			$C_Status{BADRUN}=1;
 		}elsif($a[6] eq "NoDemultiplexing"){
-			opendir DD,"$FilePath{datadir}/$mc_type$data/$FilePath{$zebra}/$flowcell/$a[0]/";
+			opendir DD,"$FilePath{datadir}/$mc_type$data/$zebra/$flowcell/$a[0]/";
                         foreach my $sf(readdir DD){
                                 if ($sf=~/summaryReport\.html/){
-                                         $summary{$flowcell}{$a[0]}="$FilePath{datadir}/$mc_type$data/$FilePath{$zebra}/$flowcell/$a[0]/$sf";
+                                         $summary{$flowcell}{$a[0]}="$FilePath{datadir}/$mc_type$data/$zebra/$flowcell/$a[0]/$sf";
                                 }else{
                                         next;
                                 }
@@ -94,10 +94,10 @@ foreach my $ff(readdir D_R){
 			$main{$a[10]}{$a[11]}=1;
 			$lanes{$a[10]}{$a[11]}{$a[0]}=1;
 		}elsif($a[6] eq "stLFR"){
-			opendir DD,"$FilePath{datadir}/$mc_type$data/$FilePath{$zebra}/$flowcell/$a[0]/";
+			opendir DD,"$FilePath{datadir}/$mc_type$data/$zebra/$flowcell/$a[0]/";
                         foreach my $sf(readdir DD){
                                 if ($sf=~/summaryReport\.html/){
-                                         $summary{$flowcell}{$a[0]}="$FilePath{datadir}/$mc_type$data/$FilePath{$zebra}/$flowcell/$a[0]/$sf";
+                                         $summary{$flowcell}{$a[0]}="$FilePath{datadir}/$mc_type$data/$zebra/$flowcell/$a[0]/$sf";
                                 }else{
                                         next;
                                 }
@@ -111,12 +111,12 @@ foreach my $ff(readdir D_R){
                         $main{$a[10]}{$a[11]}=2;
 			$lanes{$a[10]}{$a[11]}{$a[0]}=2;
 		}else{
-			my $check=&CheckFQ("$FilePath{datadir}/$mc_type$data/$FilePath{$zebra}/$flowcell/$a[0]/$a[5]",$a[7],$a[8]);
+			my $check=&CheckFQ("$FilePath{datadir}/$mc_type$data/$zebra/$flowcell/$a[0]/$a[5]",$a[7],$a[8]);
 			if($check eq "GOOD"){
-				opendir DD,"$FilePath{datadir}/$mc_type$data/$FilePath{$zebra}/$flowcell/$a[0]/";
+				opendir DD,"$FilePath{datadir}/$mc_type$data/$zebra/$flowcell/$a[0]/";
                                 foreach my $sf(readdir DD){
                                         if ($sf=~/summaryReport\.html/){
-                                                $summary{$flowcell}{$a[0]}="$FilePath{datadir}/$mc_type$data/$FilePath{$zebra}/$flowcell/$a[0]/$sf";
+                                                $summary{$flowcell}{$a[0]}="$FilePath{datadir}/$mc_type$data/$zebra/$flowcell/$a[0]/$sf";
                                         }else{
                                                 next;
                                         }
@@ -127,7 +127,7 @@ foreach my $ff(readdir D_R){
                                 }else{
                                         $main{$a[10]}{$a[11]}=0;
 					$lanes{$a[10]}{$a[11]}{$a[0]}=0;
-                                        $fqfiles{$a[5]}="$FilePath{datadir}/$mc_type$data/$FilePath{$zebra}/$flowcell/$a[0]";
+                                        $fqfiles{$a[5]}="$FilePath{datadir}/$mc_type$data/$zebra/$flowcell/$a[0]";
                                 }
 				$C_Status{GOODRUN}=1;
 			}elsif($check eq "NOFQ"){
@@ -166,9 +166,9 @@ foreach my $ff(readdir D_R){
 			&NotiFy("$fqfiles{$_FLB}",$proj,$subproj,$_FLB,$zebra."_".$flowcell,$FilePath{NDN},$year_month_day,$realID,$SubmitID,\%OutPut);
 		}elsif($BadFQ{$_FLB}){
 			if($BadFQ{$_FLB} =~/^WL:(.*)/){
-				print "[$ff] READ LENGTH ISSUE: $FilePath{datadir}/$mc_type$data/$FilePath{$zebra}/$flowcell/$lane/$_FLB\_1.fq.gz is $1, but $Fq1Length|$Fq2Length in CSV\n";
+				print "[$ff] READ LENGTH ISSUE: $FilePath{datadir}/$mc_type$data/$zebra/$flowcell/$lane/$_FLB\_1.fq.gz is $1, but $Fq1Length|$Fq2Length in CSV\n";
 			}elsif($BadFQ{$_FLB} eq "FQNotE"){
-				print "[$ff] NO FILE EXISTS: $FilePath{datadir}/$mc_type$data/$FilePath{$zebra}/$flowcell/$lane/$_FLB\_1.fq.gz\n";
+				print "[$ff] NO FILE EXISTS: $FilePath{datadir}/$mc_type$data/$zebra/$flowcell/$lane/$_FLB\_1.fq.gz\n";
 			}elsif($BadFQ{$_FLB} eq "NODEM"){
 				my $status="BADRUN"; $status="BADLANE" if keys %C_Status > 1;
 				mkpath("$FilePath{output}/".$proj."/".$subproj."/".$zebra."_".$flowcell."_".$status) unless -e ("$FilePath{output}/".$proj."/".$subproj."/".$zebra."_".$flowcell."_".$status);
@@ -176,7 +176,7 @@ foreach my $ff(readdir D_R){
 				open $OutPut{fqfiles}{"$proj|$subproj|$flowcell"},">>$FilePath{output}/$proj/$subproj/$zebra\_$flowcell\_$status/fqfiles.txt" unless $OutPut{fqfiles}{"$proj|$subproj|$flowcell"};
                                 my $mc_type=$zebra; $mc_type=~s/\d+$//;
 				$_FLB=~s/\|.*//;
-                                print {$OutPut{fqfiles}{"$proj|$subproj|$flowcell"}} join("\t","$FilePath{datadir}/$mc_type$data/$FilePath{$zebra}/$flowcell/$lane/$_FLB",$species,$realID,$SubmitID,$proj,$subproj,$Fq1Length,$Fq2Length,$Fq3Length),"\n";
+                                print {$OutPut{fqfiles}{"$proj|$subproj|$flowcell"}} join("\t","$FilePath{datadir}/$mc_type$data/$zebra/$flowcell/$lane/$_FLB",$species,$realID,$SubmitID,$proj,$subproj,$Fq1Length,$Fq2Length,$Fq3Length),"\n";
 				print {$OutPut{Log}} join("\t","[$time]\t","$FilePath{output}/".$proj."/".$subproj."/".$zebra."_".$flowcell."_".$status),"\n";
 				mkpath("$FilePath{NDN}/$year_month_day") unless -e "$FilePath{NDN}/$year_month_day";
 				open $OutPut{Notify}{$year_month_day."B"},">>$FilePath{NDN}/$year_month_day/BadRunsInfo.xls" unless $OutPut{Notify}{$year_month_day."B"};
@@ -188,7 +188,7 @@ foreach my $ff(readdir D_R){
                         	my $mc_type=$zebra; $mc_type=~s/\d+$//;
 
 				open $OutPut{fqfiles}{"$proj|$subproj|$flowcell"},">>$FilePath{output}/$proj/$subproj/$zebra\_$flowcell\_$status/fqfiles.txt" unless $OutPut{fqfiles}{"$proj|$subproj|$flowcell"};
-                        	print {$OutPut{fqfiles}{"$proj|$subproj|$flowcell"}} join("\t","$FilePath{datadir}/$mc_type$data/$FilePath{$zebra}/$flowcell/$lane/$_FLB",$species,$realID,$SubmitID,$proj,$subproj,$Fq1Length,$Fq2Length,$Fq3Length),"\n";
+                        	print {$OutPut{fqfiles}{"$proj|$subproj|$flowcell"}} join("\t","$FilePath{datadir}/$mc_type$data/$zebra/$flowcell/$lane/$_FLB",$species,$realID,$SubmitID,$proj,$subproj,$Fq1Length,$Fq2Length,$Fq3Length),"\n";
 				print {$OutPut{Log}} join("\t","[$time]\t","$FilePath{output}/".$proj."/".$subproj."/".$zebra."_".$flowcell."_".$status),"\n";
 				mkpath("$FilePath{NDN}/$year_month_day") unless -e "$FilePath{NDN}/$year_month_day";
 				open $OutPut{Notify}{$year_month_day."B"},">>$FilePath{NDN}/$year_month_day/BadRunsInfo.xls" unless $OutPut{Notify}{$year_month_day."B"};
@@ -228,25 +228,32 @@ sub CheckFQ
 	my ($fq,$l1,$l2)=@_;
 	
 	my $check="FQNotE";
-	if(-e $fq."_1.fq.gz" and -e $fq."_2.fq.gz"){
+	if(-e $fq."_1.fq.gz"){
 		my $file1=`less $fq\_1.fq.gz | head -n 2`;
 		my $file2=`less $fq\_2.fq.gz | head -n 2`;
 		my $FqSeq1=(split(/\n/,$file1))[1];
 		my $FqSeq2=(split(/\n/,$file2))[1];
-		sleep 100 unless length($FqSeq1) > 0;
-               	if(length($FqSeq1) == $l1 and length($FqSeq2) == $l2){
-			$check="GOOD";
-               	}else{
-			$check="WL:".length($FqSeq1)."|".length($FqSeq2);
+		if(length($FqSeq1) > 0){
+                	if(length($FqSeq1) == $l1 and length($FqSeq2) == $l2){
+				$check="GOOD";
+                	}else{
+				$check="WL:".length($FqSeq1)."|".length($FqSeq2);
+			}
+		}else{
+			$check="NOFQ";
 		}
 	}elsif(-e $fq.".fq.gz"){
                 my $file=`less $fq.fq.gz | head -n 2`;
                 my ($FqName,$FqSeq)=split(/\n/,$file);
-               	if(length($FqSeq) == $l1){
-               	        $check="GOOD";
-               	}else{
-               	        $check="WL:".length($FqSeq)."|0";
-               	}
+		if(length($FqSeq) > 0){
+                	if(length($FqSeq) == $l1){
+                	        $check="GOOD";
+                	}else{
+                	        $check="WL:".length($FqSeq)."|0";
+                	}
+		}else{
+			$check="NOFQ";
+		}
         }
 	return $check;
 }
@@ -339,13 +346,13 @@ $DemShell
 
 until [[$check]]
 do
-        sleep 10000
+        sleep 600
 done
 
 #Step3. FASTQC
 mkdir -p $tmpout/2_FASTQC
 perl $Bin/get_fastqc.pl $tmpout/fqfiles.txt $output $CalcuDir $p/$subp/$zebra\_$flowcell/2_FASTQC
-#sh $tmpout/2_FASTQC/qsub.sh
+sh $tmpout/2_FASTQC/qsub.sh
 
 #Step4. Quality Filter\nmkdir -p $tmpout/3_QualityFilter
 perl $Bin/get_trimFQ.pl $tmpout/fqfiles.txt $p/$subp $output $CalcuDir $p/$subp/$zebra\_$flowcell/3_QualityFilter
@@ -360,8 +367,8 @@ perl $Bin/ftp_FQ.pl $tmpout/fqfiles.txt $p/$subp $tmpout $CalcuDir/$p/$subp/$zeb
 #nohup sh $CopyDir/$zebra\_$flowcell/Main.sh
 
 #Step7. Mapping and calculation
-perl $Bin/get_Assembly4stLFR.pl $tmpout/fqfiles.txt $output $CalcuDir/$p/$subp/$zebra\_$flowcell/4_Assembly
-#sh $CalcuDir/$p/$subp/$zebra\_$flowcell/4_Assembly/qsub_assembly.sh
+#perl $Bin/get_alignment.pl $tmpout/fqfiles.txt $output $CalcuDir/$p/$subp/$zebra\_$flowcell/4_Alignment
+#sh $CalcuDir/$p/$subp/$zebra\_$flowcell/4_Alignment/qsub_mapping.sh
 ";
 	}
 	return $shell;

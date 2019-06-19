@@ -1,6 +1,15 @@
 use strict;
 use Data::Dumper;
 use File::Path;
+use FindBin;
+use JSON::XS qw(encode_json decode_json);
+use File::Slurp qw(read_file write_file);
+
+my $Bin=$FindBin::Bin;
+
+my $filerecord="$Bin/FilesHash/Files.hash";
+my $json=read_file($filerecord, { binmode => ':raw' });
+my %FilePath=%{ decode_json $json };
 
 if(@ARGV < 3){
 	print "perl $0 <fastq files record> <outdir> <prefix\n";
@@ -31,9 +40,9 @@ while(<FQ>){
 	if(-e $fq1){
 		my $TmpLengthFq2=length((split(/\n/,`less $fq2 | head`))[1]);
 		my $ToTrim=$TmpLengthFq2-$Fq2Length;
-		$Parameter="-1 $fq1 -2 $fq2 -t 0,0,0,$ToTrim -Q 2";
+		$Parameter="-1 $fq1 -2 $fq2 -Q 2 -f $FilePath{Adaptor5} -r $FilePath{Adaptor3}";
 	}elsif(-e $cc[0].".fq.gz"){
-		$Parameter="-1 $cc[0].fq.gz -Q 2";
+		$Parameter="-1 $cc[0].fq.gz -f $FilePath{Adaptor5} -Q 2";
 	}else{
 		die "Error: the file $fq1 is not exists!";
 	}

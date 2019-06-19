@@ -5,13 +5,18 @@ use File::Basename;
 use POSIX;
 use JSON::XS qw(encode_json decode_json);
 use File::Slurp qw(read_file write_file);
+use FindBin;
+my $Bin=$FindBin::Bin;
 
 if(@ARGV < 3){
 	print "perl $0 <fastq files record> <project id> <outdir>\n";
 	exit(0);
 }
 my $fqfile=shift;
-my $pjid=shift;
+
+my $kk=shift;
+my ($pjid,$subpjid)=split(/\//,$kk);
+
 my $out=shift;
 my $ToTest=shift;
 
@@ -28,7 +33,7 @@ open QSUB,">$out/FTP_FQ.sh";
 my %to_cp;
 my $SubmitID;
 while(<FQ>){
-	chomp;
+	chomp; next if /^\#/;
 	my @cc=split(/\t/);
 	$cc[0]=~/(CL\d+)\_(L\d+)\_(.*)/ or $cc[0]=~/(V\d+)\_(L\d+)\_(.*)/;
         my ($flowcell,$lane,$smp)=($1,$2,$3);
@@ -52,30 +57,35 @@ foreach my $id(keys %to_cp){
                        	print QSUB "
 #copy data login: aus-login-1-2 192.168.233.14
 
-mkdir -p $$FilePath{ftp}/$pjid/Raw_Fastq/$id
-cp $fq\_1.fq.gz $$FilePath{ftp}/$pjid/Raw_Fastq/$id
-md5sum $fq\_1.fq.gz | perl -ne 's/(\\s+).*\\//\$1/;print' > $$FilePath{ftp}/$pjid/Raw_Fastq/$id/$ccc[-1]\_1.fq.gz.md5
-cp $fq\_2.fq.gz $$FilePath{ftp}/$pjid/Raw_Fastq/$id
-md5sum $fq\_2.fq.gz | perl -ne 's/(\\s+).*\\//\$1/;print' > $$FilePath{ftp}/$pjid/Raw_Fastq/$id/$ccc[-1]\_2.fq.gz.md5
+mkdir -p $FilePath{ftp}/$pjid/Raw_Fastq/$subpjid/$id
+cp $fq\_1.fq.gz $FilePath{ftp}/$pjid/Raw_Fastq/$subpjid/$id
+md5sum $fq\_1.fq.gz | perl -ne 's/(\\s+).*\\//\$1/;print' > $FilePath{ftp}/$pjid/Raw_Fastq/$subpjid/$id/$ccc[-1]\_1.fq.gz.md5
+cp $fq\_2.fq.gz $FilePath{ftp}/$pjid/Raw_Fastq/$subpjid/$id
+md5sum $fq\_2.fq.gz | perl -ne 's/(\\s+).*\\//\$1/;print' > $FilePath{ftp}/$pjid/Raw_Fastq/$subpjid/$id/$ccc[-1]\_2.fq.gz.md5
+perl $Bin/check_md5.pl $FilePath{ftp}/$pjid/$subpjid/Raw_Fastq/$id/$ccc[-1]\_1.fq.gz $FilePath{ftp}/$pjid/$subpjid/Raw_Fastq/$id/$ccc[-1]\_1.fq.gz.md5 $FilePath{ftp}/$pjid/$subpjid/Raw_Fastq/$id/$ccc[-1]\_1.fq.gz.md5.err
+perl $Bin/check_md5.pl $FilePath{ftp}/$pjid/$subpjid/Raw_Fastq/$id/$ccc[-1]\_2.fq.gz $FilePath{ftp}/$pjid/$subpjid/Raw_Fastq/$id/$ccc[-1]\_2.fq.gz.md5 $FilePath{ftp}/$pjid/$subpjid/Raw_Fastq/$id/$ccc[-1]\_2.fq.gz.md5.err
+if [[ -f $FilePath{ftp}/$pjid/$subpjid/Raw_Fastq/$id/$ccc[-1]\_1.fq.gz.md5.err || -f $FilePath{ftp}/$pjid/$subpjid/Raw_Fastq/$id/$ccc[-1]\_1.fq.gz.md5.err ]]; then
+	exit 1
+fi
 time=\$(date \"+%Y%m%d %H:%M:%S\")
 echo \"[\${time}]	$pjid	$id	$SubmitID	$ccc[-1]	$fq\" >> $FilePath{CopyFTQ} 
 ";
 			if(-e "$dir/Basic_Statistics_of_Sequencing_Quality.txt"){
 				print QSUB "
-cp $dir/Basic_Statistics_of_Sequencing_Quality.txt $$FilePath{ftp}/$pjid/Raw_Fastq/$id/$ccc[-1].FilterStatistics.txt
+cp $dir/Basic_Statistics_of_Sequencing_Quality.txt $FilePath{ftp}/$pjid/Raw_Fastq/$id/$ccc[-1].FilterStatistics.txt
 ";
 			}
 		}elsif(-e $fq.".fq.gz"){
 			print QSUB "
-mkdir -p $$FilePath{ftp}/$pjid/Raw_Fastq/$id
-cp $fq.fq.gz $$FilePath{ftp}/$pjid/Raw_Fastq/$id
-md5sum $fq.fq.gz | perl -ne 's/(\\s+).*\\//\$1/;print' > $$FilePath{ftp}/$pjid/Raw_Fastq/$id/$ccc[-1].fq.gz.md5
+mkdir -p $FilePath{ftp}/$pjid/Raw_Fastq/$id
+cp $fq.fq.gz $FilePath{ftp}/$pjid/Raw_Fastq/$id
+md5sum $fq.fq.gz | perl -ne 's/(\\s+).*\\//\$1/;print' > $FilePath{ftp}/$pjid/Raw_Fastq/$id/$ccc[-1].fq.gz.md5
 time=\$(date \"+%Y%m%d %H:%M:%S\")
 echo \"[\${time}]       $pjid   $id     $SubmitID       $ccc[-1]        $fq\" >> $FilePath{CopyFTQ}
 ";
 			if(-e "$dir/Basic_Statistics_of_Sequencing_Quality.txt"){
 				print QSUB "
-cp $dir/Basic_Statistics_of_Sequencing_Quality.txt $$FilePath{ftp}/$pjid/Raw_Fastq/$id/$ccc[-1].FilterStatistics.txt
+cp $dir/Basic_Statistics_of_Sequencing_Quality.txt $FilePath{ftp}/$pjid/Raw_Fastq/$id/$ccc[-1].FilterStatistics.txt
 ";
 			}
         	}else{
