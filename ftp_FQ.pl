@@ -68,7 +68,7 @@ if [[ -f $FilePath{ftp}/$pjid/$subpjid/Raw_Fastq/$id/$ccc[-1]\_1.fq.gz.md5.err |
 	exit 1
 fi
 time=\$(date \"+%Y%m%d %H:%M:%S\")
-echo \"[\${time}]	$pjid	$id	$SubmitID	$ccc[-1]	$fq\" >> $FilePath{CopyFTQ} 
+echo \"[\$USER][\${time}]	$pjid	$id	$SubmitID	$ccc[-1]	$fq\" >> $FilePath{CopyFTQ} 
 ";
 			if(-e "$dir/Basic_Statistics_of_Sequencing_Quality.txt"){
 				print QSUB "
@@ -81,7 +81,7 @@ mkdir -p $FilePath{ftp}/$pjid/Raw_Fastq/$id
 cp $fq.fq.gz $FilePath{ftp}/$pjid/Raw_Fastq/$id
 md5sum $fq.fq.gz | perl -ne 's/(\\s+).*\\//\$1/;print' > $FilePath{ftp}/$pjid/Raw_Fastq/$id/$ccc[-1].fq.gz.md5
 time=\$(date \"+%Y%m%d %H:%M:%S\")
-echo \"[\${time}]       $pjid   $id     $SubmitID       $ccc[-1]        $fq\" >> $FilePath{CopyFTQ}
+echo \"[\$USER][\${time}]       $pjid   $id     $SubmitID       $ccc[-1]        $fq\" >> $FilePath{CopyFTQ}
 ";
 			if(-e "$dir/Basic_Statistics_of_Sequencing_Quality.txt"){
 				print QSUB "

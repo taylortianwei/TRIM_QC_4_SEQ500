@@ -63,7 +63,7 @@ foreach my $ff(readdir D_R){
 		$a[8]=0 if $a[8] eq "";
 
                 my $mc_type=$zebra; $mc_type=~s/\d+$//;
-		if($a[12] eq "BADRUN_INCOMPLETE" or $a[12] eq "BADRUN_COMPLETE_UNUSABLE"){
+		if($a[12] eq "BADRUN_INCOMPLETE" or $a[12] eq "BADRUN_COMPLETE_UNUSABLE" or $a[12] eq "NO_RUN"){
 			if($a[6] eq "NoDemultiplexing"){
 				$BadFQ{$a[5]."|$a[1]"}="NODEM";
 				$projects{$a[5]."|$a[1]"}=[@a[10..12,1..3,7,8,9,0]];
@@ -167,6 +167,8 @@ foreach my $ff(readdir D_R){
 		}elsif($BadFQ{$_FLB}){
 			if($BadFQ{$_FLB} =~/^WL:(.*)/){
 				print "[$ff] READ LENGTH ISSUE: $FilePath{datadir}/$mc_type$data/$FilePath{$zebra}/$flowcell/$lane/$_FLB\_1.fq.gz is $1, but $Fq1Length|$Fq2Length in CSV\n";
+			}elsif($BadFQ{$_FLB} =~/^OnHold:(.*)/){
+				print "$BadFQ{$_FLB}\n";
 			}elsif($BadFQ{$_FLB} eq "FQNotE"){
 				print "[$ff] NO FILE EXISTS: $FilePath{datadir}/$mc_type$data/$FilePath{$zebra}/$flowcell/$lane/$_FLB\_1.fq.gz\n";
 			}elsif($BadFQ{$_FLB} eq "NODEM"){
@@ -214,7 +216,7 @@ foreach my $ff(readdir D_R){
 			open $OutPut{MainSH}{"$p|$subp|$flowcell"},">$FilePath{output}/$p/$subp/$zebra\_$flowcell/Main.sh" unless $OutPut{MainSH}{"$p|$subp|$flowcell"};
 			print {$OutPut{MainSH}{"$p|$subp|$flowcell"}} $shell;
 			## Run everything
-			system ("nohup sh $tmpout/Main.sh");
+			#system ("nohup sh $tmpout/Main.sh");
 	
 			## Log Files
 			print {$OutPut{Log}} join("\t","[$time]\t","$FilePath{output}/".$p."/".$subp."/".$zebra."_".$flowcell),"\n";
@@ -229,23 +231,39 @@ sub CheckFQ
 	
 	my $check="FQNotE";
 	if(-e $fq."_1.fq.gz" and -e $fq."_2.fq.gz"){
-		my $file1=`less $fq\_1.fq.gz | head -n 2`;
-		my $file2=`less $fq\_2.fq.gz | head -n 2`;
-		my $FqSeq1=(split(/\n/,$file1))[1];
-		my $FqSeq2=(split(/\n/,$file2))[1];
-		sleep 100 unless length($FqSeq1) > 0;
-               	if(length($FqSeq1) == $l1 and length($FqSeq2) == $l2){
-			$check="GOOD";
-               	}else{
-			$check="WL:".length($FqSeq1)."|".length($FqSeq2);
+		system("gzip -t $fq\_1.fq.gz 2> $FilePath{TmpDir}/ZipTest1.txt");
+		system("gzip -t $fq\_2.fq.gz 2> $FilePath{TmpDir}/ZipTest2.txt");
+		if(! -z "$FilePath{TmpDir}/ZipTest1.txt"){
+                        $check="OnHold: file copy for $fq\_1.fq.gz is not finished yet!";
+                }elsif(! -z "$FilePath{TmpDir}/ZipTest2.txt"){
+                        $check="OnHold: file copy for $fq\_2.fq.gz is not finished yet!";
+                }else{
+			my $file1=`less $fq\_1.fq.gz | head -n 2`;
+			my $file2=`less $fq\_2.fq.gz | head -n 2`;
+			my $FqSeq1=(split(/\n/,$file1))[1];
+			my $FqSeq2=(split(/\n/,$file2))[1];
+               		if(length($FqSeq1) == $l1 and length($FqSeq2) == $l2){
+				$check="GOOD";
+               		}else{
+				$check="WL:".length($FqSeq1)."|".length($FqSeq2);
+			}
 		}
+	}elsif(-e $fq."_1.fq.gz"){
+		$check="OnHold: file copy for $fq\_2.fq.gz is not finished yet!";
+	}elsif(-e $fq."_2.fq.gz"){
+		$check="OnHold: file copy for $fq\_1.fq.gz is not finished yet!";
 	}elsif(-e $fq.".fq.gz"){
-                my $file=`less $fq.fq.gz | head -n 2`;
-                my ($FqName,$FqSeq)=split(/\n/,$file);
-               	if(length($FqSeq) == $l1){
-               	        $check="GOOD";
-               	}else{
-               	        $check="WL:".length($FqSeq)."|0";
+		system("gzip -t $fq.fq.gz 2> $FilePath{TmpDir}/ZipTest.txt");
+		if(! -z "$FilePath{TmpDir}/ZipTest.txt"){
+			$check="OnHold: file copy for $fq.fq.gz is not finished yet!";
+		}else{
+                	my $file=`less $fq.fq.gz | head -n 2`;
+                	my ($FqName,$FqSeq)=split(/\n/,$file);
+               		if(length($FqSeq) == $l1){
+               	        	$check="GOOD";
+               		}else{
+               		       	$check="WL:".length($FqSeq)."|0";
+			}
                	}
         }
 	return $check;
